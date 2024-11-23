@@ -15,8 +15,10 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-
+import { DateFormat } from "@/components/DateFormat";
+import { useNavigate } from "react-router-dom";
 export function SingleNote() {
+  let navigate = useNavigate();
   const { noteId } = useParams(); // Get the note ID from the URL
   const [note, setNote] = useState(null);
   const [error, setError] = useState(null);
@@ -90,9 +92,7 @@ export function SingleNote() {
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="text-2xl">{note.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {note.date}
-                </p>
+                <DateFormat date={note.date} />
               </div>
               {note.isImportant && (
                 <Badge
@@ -116,7 +116,7 @@ export function SingleNote() {
             <Button
               variant="outline"
               className="w-[120px] bg-[#2563eb] text-white hover:bg-accent"
-              onClick={handleEdit}
+              onClick={() => navigate(`/editnote/${note._id}`)}
             >
               <Pencil className="mr-2 h-4 w-4" />
               Edit

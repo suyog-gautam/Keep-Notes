@@ -8,7 +8,9 @@ import { Profile } from "./pages/Profile";
 import { Error } from "./pages/Error";
 import { AddNote } from "./pages/AddNote";
 import { SingleNote } from "./pages/SIngleNote";
+import { Search } from "./pages/Search";
 import "./App.css";
+import { EditNote } from "./pages/EditNote";
 
 function App() {
   return (
@@ -22,7 +24,8 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/addnote" element={<AddNote />} />
           <Route path="/singlenote/:noteId" element={<SingleNote />} />
-
+          <Route path="/editnote/:noteId" element={<EditNote />} />
+          <Route path="/search" element={<Search />} />
           <Route path="*" element={<Error />} />
         </Routes>
       </BrowserRouter>

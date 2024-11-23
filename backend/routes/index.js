@@ -5,9 +5,9 @@ var User = require("../models/userModel");
 var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 var noteModel = require("../models/noteModel");
-
+let secret = "secret";
 router.get("/", function (req, res, next) {
-  res.render("index", { title: "Express" });
+  res.render("index", { title: "Note App" });
 });
 
 router.post("/signup", async (req, res) => {
@@ -208,6 +208,18 @@ router.get("/getNote/:noteId", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+router.post("/getUserDetails", async (req, res) => {
+  let { userId } = req.body;
+  let user = await User.findOne({ _id: userId });
+  if (user) {
+    res.json({ success: true, data: user });
+  } else {
+    res.json({
+      success: false,
+      msg: "No User Found !",
+    });
   }
 });
 

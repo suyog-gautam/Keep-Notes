@@ -11,8 +11,43 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useState, useEffect } from "react";
 
 export function Navbar() {
+  const [userDetails, setUserDetailes] = useState();
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        setError("User not logged in");
+
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:8000/getUserDetails", {
+          mode: "cors",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setUserDetailes(data.data);
+        } else {
+          setError(data.message || "No notes found");
+        }
+      } catch (err) {
+        console.error("Error fetching user details:", err);
+        setError("Failed to fetch user info");
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
   return (
     <header className="sticky top-0 p-6 z-50 cursor-pointer w-full bg-[#f7f7f7] border-b bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/60 ">
       <div className=" flex h-5 items-center justify-between">
@@ -35,7 +70,11 @@ export function Navbar() {
               >
                 <Avatar className="h-8 w-8 ">
                   <AvatarImage src="/placeholder.svg" alt="Profile" />
-                  <AvatarFallback className="bg-slate-300">SG</AvatarFallback>
+                  <AvatarFallback className="bg-slate-300">
+                    {userDetails?.name
+                      ? userDetails?.name.slice(0, 2).toUpperCase()
+                      : "NA"}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -43,7 +82,7 @@ export function Navbar() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    user@example.com
+                    {userDetails?.email}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -51,8 +90,10 @@ export function Navbar() {
               <DropdownMenuItem asChild>
                 <Link to="/profile">Profile</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>New Note</DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link to="/addnote">New Note</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Log out</DropdownMenuItem>
             </DropdownMenuContent>
