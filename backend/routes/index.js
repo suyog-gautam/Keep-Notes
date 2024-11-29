@@ -3,13 +3,16 @@ var router = express.Router();
 const app = express();
 var User = require("../models/userModel");
 var bcrypt = require("bcryptjs");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 var jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 var noteModel = require("../models/noteModel");
+require("dotenv").config();
 let secret = "secret";
-router.get("/", function (req, res, next) {
-  res.render("index", { title: "Note App" });
-});
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 router.post("/signup", async (req, res) => {
   let { name, email, password } = req.body;
 
@@ -211,15 +214,182 @@ router.get("/getNote/:noteId", async (req, res) => {
   }
 });
 router.post("/getUserDetails", async (req, res) => {
-  let { userId } = req.body;
-  let user = await User.findOne({ _id: userId });
-  if (user) {
-    res.json({ success: true, data: user });
+  const { userId } = req.body;
+  try {
+    const user = await User.findOne({ _id: userId });
+    if (user) {
+      res.json({ success: true, data: user });
+    } else {
+      res.status(404).json({ success: false, msg: "No User Found!" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, msg: "Internal Server Error" });
+  }
+});
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, "../uploads");
+    fs.existsSync(uploadDir) || fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(
+      null,
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
+    );
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const fileTypes = /jpeg|jpg|png|gif/;
+  const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = fileTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
   } else {
-    res.json({
-      success: false,
-      msg: "No User Found !",
+    cb(new Error("Only images are allowed!"), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB size limit
+  fileFilter: fileFilter,
+});
+
+router.post("/user/profile-pic", (req, res) => {
+  upload.single("profilePic")(req, res, async (err) => {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      // An unknown error occurred when uploading.
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Everything went fine.
+    try {
+      console.log("Received request for profile picture upload");
+      console.log("Request body:", req.body);
+      console.log("Request file:", req.file);
+
+      if (!req.file) {
+        console.error("No file uploaded");
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { userId } = req.body;
+      if (!userId) {
+        console.error("User ID is missing");
+        return res.status(400).json({ error: "User ID is required" });
+      }
+
+      const profilePicPath = "uploads/" + req.file.filename;
+
+      console.log("Updating user with ID:", userId);
+      console.log("Profile picture path:", profilePicPath);
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { profilePic: profilePicPath },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        console.error("User not found:", userId);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      console.log("User updated successfully:", updatedUser);
+
+      res.json({
+        success: true,
+        message: "Profile picture uploaded successfully",
+        user: updatedUser,
+      });
+    } catch (err) {
+      console.error("Error updating profile picture:", err);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update profile picture",
+        details: err.message,
+      });
+    }
+  });
+});
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Generate JWT as reset token
+    const resetToken = jwt.sign(
+      { userId: user._id }, // Embed user ID in the token
+      secret, // Use a secure secret key
+      { expiresIn: "1h" } // Token expires in 1 hour
+    );
+
+    // Save token metadata to the user (optional, for additional security)
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Send reset email
+    const transporter = nodemailer.createTransport({
+      service: "Gmail", // Replace with your email provider
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
     });
+
+    const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: user.email,
+      subject: "Password Reset Request",
+      html: `<p>Click the link below to reset your password:</p>
+             <a href="${resetLink}">${resetLink}</a>`,
+    });
+
+    res.json({ message: "Reset email sent" });
+  } catch (error) {
+    console.error("Error in /forgot-password:", error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+router.post("/reset-password/:token", async (req, res) => {
+  const token = req.params.token;
+  const { password } = req.body;
+
+  try {
+    // Verify and decode the token
+    const decoded = jwt.verify(token, secret);
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Find the user and update the password
+    const user = await User.findByIdAndUpdate(decoded.userId, {
+      password: hashedPassword,
+      resetToken: null, // Clear reset token for added security
+      resetTokenExpiry: null, // Clear expiry
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "User not found or token expired" });
+    }
+
+    res.status(200).json({ message: "Password successfully updated" });
+  } catch (error) {
+    console.error("Error in password reset:", error);
+    return res.status(400).json({ message: "Invalid or expired token" });
   }
 });
 

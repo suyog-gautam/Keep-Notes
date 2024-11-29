@@ -1,5 +1,5 @@
 "use client";
-
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ForgetPasswordModal } from "./ForgetPasswordModal.jsx";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +36,7 @@ const formSchema = z.object({
 });
 
 export function Login() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   let navigate = useNavigate();
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -63,8 +65,9 @@ export function Login() {
         toast.success(result.message || "User Logged In successfully!");
         localStorage.setItem("token", result.token);
         localStorage.setItem("userId", result.userId);
-        console.log(result.token, result.userId);
-        navigate("/"); // Redirect after successful login
+
+        navigate("/");
+        window.location.reload();
         form.reset(); // Clear the form
       } else {
         toast.error(result.message || "Failed to Login user.");
@@ -77,7 +80,7 @@ export function Login() {
 
   return (
     <div className="login-container flex flex-col min-h-[100vh] h-full w-full items-center justify-center px-4">
-      <Card className="mx-auto max-w-sm">
+      <Card className="mx-auto max-w-sm ">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
@@ -114,13 +117,15 @@ export function Login() {
                     <FormItem className="grid gap-2">
                       <div className="flex justify-between items-center">
                         <FormLabel htmlFor="password">Password</FormLabel>
-                        <Link
-                          to="#"
-                          className="ml-auto inline-block text-sm underline"
+                        <button
+                          type="button"
+                          className="ml-auto inline-block text-sm underline text-blue-600 hover:text-blue-800"
+                          onClick={() => setIsModalOpen(true)}
                         >
                           Forgot your password?
-                        </Link>
+                        </button>
                       </div>
+
                       <FormControl>
                         <PasswordInput
                           id="password"
@@ -142,7 +147,7 @@ export function Login() {
               </div>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-4 text-center text-sm pb-6">
             Don&apos;t have an account?{" "}
             <Link to="/signup" className="text-[#578df5] underline ">
               Sign up
@@ -150,6 +155,7 @@ export function Login() {
           </div>
         </CardContent>
       </Card>
+      <ForgetPasswordModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} />
     </div>
   );
 }

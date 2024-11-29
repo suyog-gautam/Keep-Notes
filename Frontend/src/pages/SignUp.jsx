@@ -51,7 +51,7 @@ export function SignUp() {
       confirmPassword: "",
     },
   });
-  console.log(localStorage.getItem("userId"));
+
   async function onSubmit(values) {
     try {
       const response = await fetch("http://localhost:8000/signup", {
@@ -179,7 +179,7 @@ export function SignUp() {
               </div>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-4 text-center text-sm pb-6">
             Already have an account?{" "}
             <Link to="/login" className="text-[#578df5] underline ">
               Login

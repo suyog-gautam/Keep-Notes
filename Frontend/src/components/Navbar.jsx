@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
+import { Logout } from "./Logout";
 
 export function Navbar() {
   const [userDetails, setUserDetailes] = useState();
@@ -42,12 +43,12 @@ export function Navbar() {
         }
       } catch (err) {
         console.error("Error fetching user details:", err);
-        setError("Failed to fetch user info");
       }
     };
 
     fetchUserDetails();
   }, []);
+
   return (
     <header className="sticky top-0 p-6 z-50 cursor-pointer w-full bg-[#f7f7f7] border-b bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/60 ">
       <div className=" flex h-5 items-center justify-between">
@@ -69,7 +70,10 @@ export function Navbar() {
                 className="relative h-8 w-8 rounded-full"
               >
                 <Avatar className="h-8 w-8 ">
-                  <AvatarImage src="/placeholder.svg" alt="Profile" />
+                  <AvatarImage
+                    src={`http://localhost:8000/${userDetails?.profilePic}`}
+                    alt="Profile"
+                  />
                   <AvatarFallback className="bg-slate-300">
                     {userDetails?.name
                       ? userDetails?.name.slice(0, 2).toUpperCase()
@@ -95,7 +99,8 @@ export function Navbar() {
                 <Link to="/addnote">New Note</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Log out</DropdownMenuItem>
+
+              <Logout />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
